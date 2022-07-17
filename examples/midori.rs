@@ -62,7 +62,7 @@ fn main() {
 
     /* Setup the camera and zoom */
     let mut zoom: f64 = 0.15;
-    let mut cam = Inochi2DCamera::new(Some(zoom as f32), Some(0.0), Some(0.0));
+    let mut cam = Inochi2DCamera::new(&ctx, Some(zoom as f32), Some(0.0), Some(0.0));
 
     /* Setup the Inochi2D scene to draw */
     let mut scene = Inochi2DScene::new();

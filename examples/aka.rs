@@ -11,6 +11,7 @@ extern crate inochi2d_rs;
 extern crate tracing_subscriber;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use glutin::dpi::LogicalSize;
 use glutin::event::{
@@ -57,7 +58,7 @@ fn main() {
     /* Create a new Inochi2D context */
     let mut ctx = Inochi2D::new(MONOTONIC_CLOCK, 800, 800);
     /* Create a new Inochi2D puppet from a file */
-    let mut puppet = Inochi2DPuppet::new(PathBuf::from("./examples/models/Aka.inx")).unwrap();
+    let mut puppet = Inochi2DPuppet::new(&ctx, PathBuf::from("./examples/models/Aka.inx")).unwrap();
 
     /* Setup the camera and zoom */
     let mut zoom: f64 = 0.15;

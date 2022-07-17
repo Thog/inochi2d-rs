@@ -5,14 +5,14 @@
     Authors: Aki "lethalbit" Van Ness
 */
 
-use std::path::PathBuf;
+use std::{path::PathBuf, marker::PhantomData};
 
 #[cfg(feature = "logging")]
 use tracing::debug;
 
 use crate::{
     ffi::{inErrorGet, types::InPuppet},
-    Result,
+    Result, core::Inochi2D,
 };
 
 #[cfg(feature = "opengl")]
@@ -22,13 +22,14 @@ use crate::ffi::{
     inPuppetUpdate, types::InPuppetPtr,
 };
 
-pub struct Inochi2DPuppet {
+pub struct Inochi2DPuppet<'a> {
     handle: InPuppetPtr,
     pub name: String,
+    instance_lifetime: PhantomData<&'a ()>
 }
 
-impl Inochi2DPuppet {
-    pub fn from_raw_handle(handle: *mut InPuppet, name: String) -> Result<Self> {
+impl<'a> Inochi2DPuppet<'a> {
+    pub fn from_raw_handle(instance_lifetime: PhantomData<&'a ()>, handle: *mut InPuppet, name: String) -> Result<Self> {
         if handle.is_null() {
             let error_information = unsafe { inErrorGet() };
 
@@ -40,11 +41,12 @@ impl Inochi2DPuppet {
                 Err(error_res.unwrap_or_else(|_| "Unknown error (UTF-8 decoding failed!)".into()))
             }
         } else {
-            Ok(Inochi2DPuppet { handle, name })
+            Ok(Inochi2DPuppet { handle, name, instance_lifetime })
         }
     }
 
     pub unsafe fn from_raw_parts(
+        instance: &'a Inochi2D,
         buffer: *const u8,
         size: usize,
         name: Option<String>,
@@ -53,16 +55,20 @@ impl Inochi2DPuppet {
         debug!("Constructing puppet from {} bytes", size);
         let hndl = unsafe { inPuppetLoadFromMemory(buffer, size) };
 
-        Self::from_raw_handle(hndl, name.unwrap_or(String::from("<in-memory-puppet>")))
+        Self::from_raw_handle(instance.instance_lifetime, hndl, name.unwrap_or(String::from("<in-memory-puppet>")))
     }
 
-    pub fn new(puppet: PathBuf) -> Result<Self> {
+    pub(crate) fn new_from_raw_lifetime(instance_lifetime: PhantomData<&'a ()>, puppet: PathBuf) -> Result<Self> {
         let puppet_path = String::from(puppet.to_str().expect("Unable to get puppet path"));
         #[cfg(feature = "logging")]
         debug!("Constructing puppet from file {}", puppet_path);
         let hndl = unsafe { inPuppetLoadEx(puppet_path.as_ptr(), puppet_path.len()) };
 
-        Self::from_raw_handle(hndl, puppet_path)
+        Self::from_raw_handle(instance_lifetime, hndl, puppet_path)
+    }
+
+    pub fn new(instance: &'a Inochi2D, puppet: PathBuf) -> Result<Self> {
+        Self::new_from_raw_lifetime(instance.instance_lifetime, puppet)
     }
 
     pub fn update(&mut self) {
@@ -85,7 +91,7 @@ impl Inochi2DPuppet {
     }
 }
 
-impl Drop for Inochi2DPuppet {
+impl<'a> Drop for Inochi2DPuppet<'a> {
     fn drop(&mut self) {
         #[cfg(feature = "logging")]
         debug!("Disposing of puppet {}", self.name);

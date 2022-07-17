@@ -52,7 +52,7 @@ pub extern "C" fn MONOTONIC_CLOCK() -> f64 {
     }
 }
 
-impl<'a> Inochi2DBuilder {
+impl Inochi2DBuilder {
     /// Creates a new Inochi2D context builder.
     ///
     ///
@@ -154,7 +154,7 @@ impl<'a> Inochi2DBuilder {
     /// - If initialization was successful a `Inochi2D` context.
     /// - If an error occurred a string indicating the error will be returned.
     ///
-    pub fn build(self) -> Result<Inochi2D> {
+    pub fn build<'a>(self) -> Result<Inochi2D<'a>> {
         if self.time_func.is_none() {
             Err("timing mut be called before build!".into())
         } else {

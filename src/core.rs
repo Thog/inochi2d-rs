@@ -8,21 +8,23 @@
 use crate::puppet::Inochi2DPuppet;
 use crate::Result;
 
-use std::path::PathBuf;
+use std::{path::PathBuf, marker::PhantomData};
 
 #[cfg(feature = "logging")]
 use tracing::debug;
 
 use crate::ffi::{inCleanup, inUpdate, inInit, inViewportGet, inViewportSet, types::InTimingFunc};
 
-pub struct Inochi2D {
-    pub puppets: Vec<Inochi2DPuppet>,
+pub struct Inochi2D<'a> {
+    pub puppets: Vec<Inochi2DPuppet<'a>>,
 
     pub view_width: i32,
     pub view_height: i32,
+
+    pub(crate) instance_lifetime: PhantomData<&'a ()>,
 }
 
-impl Inochi2D {
+impl<'a> Inochi2D<'a> {
     /// Add a new puppet to the Inochi2D context.
     ///
     /// # Example
@@ -35,7 +37,7 @@ impl Inochi2D {
     /// ~~~
     ///
     pub fn add_puppet(&mut self, puppet: PathBuf) -> Result<()> {
-        self.puppets.push(Inochi2DPuppet::new(puppet)?);
+        self.puppets.push(Inochi2DPuppet::new_from_raw_lifetime(self.instance_lifetime, puppet)?);
 
         Ok(())
     }
@@ -173,12 +175,13 @@ impl Inochi2D {
 
                 view_width: w,
                 view_height: h,
+                instance_lifetime: PhantomData,
             }
         }
     }
 }
 
-impl Drop for Inochi2D {
+impl<'a> Drop for Inochi2D<'a> {
     fn drop(&mut self) {
         #[cfg(feature = "logging")]
         debug!("Disposing of Inochi2D");

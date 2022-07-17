@@ -5,23 +5,27 @@
     Authors: Aki "lethalbit" Van Ness
 */
 
+use std::marker::PhantomData;
+
 #[cfg(feature = "logging")]
 use tracing::debug;
 
-use crate::ffi::{
+use crate::{ffi::{
     inCameraDestroy, inCameraGetCenterOffset, inCameraGetCurrent, inCameraGetMatrix,
     inCameraGetPosition, inCameraGetRealSize, inCameraGetZoom, inCameraSetPosition,
     inCameraSetZoom, types::InCameraPtr,
-};
+}, core::Inochi2D};
 
-pub struct Inochi2DCamera {
+#[derive(Debug)]
+pub struct Inochi2DCamera<'a> {
     handle: InCameraPtr,
     zoom: f32,
     x: f32,
     y: f32,
+    instance_lifetime: PhantomData<&'a ()>,
 }
 
-impl Inochi2DCamera {
+impl<'a> Inochi2DCamera<'a> {
     /// Set Inochi2D Camera Zoom
     ///
     /// # Example
@@ -199,23 +203,7 @@ impl Inochi2DCamera {
     }
 
     /// Get the current Inochi2D camera and optionally set it's zoom and position
-    ///
-    /// # Example
-    ///
-    /// ~~~no_run
-    /// let mut camera = Inochi2DCamera::new(
-    ///     Some(0.15), None, None
-    /// );
-    ///
-    /// ~~~
-    ///
-    ///
-    /// # Returns
-    ///
-    /// A new `Inochi2DCamera`
-    ///
-    ///
-    pub fn new(zoom: Option<f32>, x: Option<f32>, y: Option<f32>) -> Self {
+    pub fn new(instance: &'a Inochi2D, zoom: Option<f32>, x: Option<f32>, y: Option<f32>) -> Self {
         unsafe {
             let hndl = inCameraGetCurrent();
             let cam_zoom = zoom.unwrap_or_else(|| {
@@ -250,12 +238,13 @@ impl Inochi2DCamera {
                 zoom: cam_zoom,
                 x: cam_x,
                 y: cam_y,
+                instance_lifetime: instance.instance_lifetime
             }
         }
     }
 }
 
-impl Drop for Inochi2DCamera {
+impl<'a> Drop for Inochi2DCamera<'a> {
     fn drop(&mut self) {
         #[cfg(feature = "logging")]
         debug!("Destroying camera");
